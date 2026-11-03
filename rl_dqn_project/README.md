@@ -3,8 +3,11 @@
 **Team:** Aispur Santiago · Amaya Bryan — *Intelligent Agents* (PhD Armas Rolando)
 
 From-scratch tabular Q-learning and DQN (PyTorch), compared on **cumulative environment steps**.
-Every configuration runs with 5 fixed seeds and gets periodic **frozen-weight greedy evaluation**.
+Every configuration runs with **10 fixed seeds** and gets periodic **frozen-weight greedy evaluation**.
 Plots show 95 % confidence bands.
+
+**Start here:** [`ANALYSIS.md`](ANALYSIS.md) (what we learned) · [`report/main.pdf`](report/main.pdf) (8-page report)
+· [`DEFENSE_GUIDE.md`](DEFENSE_GUIDE.md) (code walkthrough and expected questions)
 
 | Study | Environment | Script | What it shows |
 |---|---|---|---|
@@ -18,7 +21,8 @@ Plots show 95 % confidence bands.
 ```bash
 cd "~/Documents/Intelligent Agents/rl_dqn_project"
 source ../.venv/bin/activate.fish        # or: source ../.venv/bin/activate (bash)
-python experiments/run_all.py             # ~1 h on 8 cores; cached runs are skipped
+python experiments/run_all.py             # 170 runs, ~22 CPU-hours (~3 h on 8 threads); cached runs are skipped
+python analysis.py                        # every number in ANALYSIS.md / the report -> results/analysis.md
 ```
 
 Fresh machine setup:
@@ -42,7 +46,7 @@ Useful flags (all experiment scripts and `run_all.py` accept them):
 Other commands:
 
 ```bash
-python -m pytest -q tests                              # 9 sanity tests (update rules, gather, targets, reproducibility)
+python -m pytest -q tests                              # 10 sanity tests (update rules, gather, targets, reproducibility)
 python experiments/watch.py --env LunarLander-v3       # watch the trained agent (pygame window)
 python experiments/watch.py --env CartPole-v1 --tabular --bins 10
 cd report && latexmk -pdf main.tex                     # build the report PDF
@@ -69,7 +73,11 @@ results/
   <experiment>/<config>/seed_<k>.pt     final DQN weights   (.npz = tabular Q-table)
   figures/          PDF + PNG figures used by the report
   tables/           CSV + LaTeX tables used by the report
-report/             LaTeX source of the 6–8 page report (main.tex, references.bib)
+  hosts.json        which machine ran which seeds (CPU times use the laptop runs only)
+  analysis.md/.json full quantitative analysis written by analysis.py
+analysis.py         statistics behind every claim (Welch tests, efficiency ratios, forgetting, divergence)
+ANALYSIS.md         what we learned, with all tables
+report/             LaTeX source + compiled main.pdf (8 pages: main.tex, body.tex, references.bib)
 tests/              pytest sanity checks
 DEFENSE_GUIDE.md    code walkthrough + answers to expected oral-defense questions/live modifications
 ```
@@ -84,7 +92,8 @@ DEFENSE_GUIDE.md    code walkthrough + answers to expected oral-defense question
 - The x-axis is always **cumulative environment steps**. Wall-clock and CPU seconds are logged per run
   (see the `CPU s/run` table columns).
 - Versions are pinned in `requirements.txt` (Python 3.13.5, CPU PyTorch).
-  Other hardware can differ in the last float digits.
+  Other hardware can differ in the last float digits. Seeds 0–4 (and 8–9 for LunarLander) ran on the laptop and
+  the rest on GitHub Codespaces (`results/hosts.json`); `--seed-start` makes that split possible.
 
 ## VS Code
 

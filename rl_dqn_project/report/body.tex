@@ -1,10 +1,10 @@
 \begin{abstract}
 We compare tabular Q-learning on a discretized state space with a Deep Q-Network (DQN) implemented
 from scratch in PyTorch. Every curve is indexed by \emph{cumulative environment steps}, averaged over
-five fixed seeds with 95\% Student-$t$ confidence bands, and evaluated greedily ($\varepsilon=0$, frozen
+ten fixed seeds with 95\% Student-$t$ confidence bands, and evaluated greedily ($\varepsilon=0$, frozen
 weights) at regular checkpoints. On CartPole-v1, DQN reaches the solved threshold in
-$\approx$4--7$\times$ fewer environment steps than the best tabular agent, but each step costs
-$\approx$22$\times$ more CPU, so tabular learning is cheaper per unit of \emph{compute}. On the
+$\approx$7$\times$ fewer environment steps than the best tabular agent, but each step costs
+$\approx$23$\times$ more CPU, so tabular learning is $\approx$3$\times$ cheaper per unit of \emph{compute}. On the
 sparse-reward MountainCar-v0, DQN with $\varepsilon$-greedy exploration never reaches the goal and
 converges to a flat $Q\approx-1/(1-\gamma)$. An optimistically initialized table solves it, while a
 pessimistically initialized one fails like DQN, which isolates optimism as the cause. On LunarLander-v3,
@@ -18,7 +18,7 @@ under a fair experimental protocol. We hold three rules throughout. (i) Algorith
 environment steps, because a tabular agent's early CartPole episodes last $\sim$20 steps while a good
 DQN episode lasts 500, so an ``episode'' axis is not a common clock. (ii) Performance is measured by
 periodic greedy evaluation with frozen weights, reported separately from the noisy $\varepsilon$-greedy
-training returns. (iii) Every configuration uses at least five seeds, with seeding of
+training returns. (iii) Every configuration uses ten seeds, with seeding of
 \texttt{random}, NumPy, \texttt{torch.manual\_seed} and \texttt{env.reset(seed=\dots)}. Negative results
 are reported and diagnosed rather than tuned away. All code, raw logs, weights and the command that
 regenerates every figure (\texttt{python experiments/run\_all.py}) are in the accompanying repository.
@@ -56,7 +56,7 @@ bound. Values beyond the bounds fall into the outer bins. Position ($\pm2.4$) an
 ($\pm0.2095$\,rad $=12^\circ$) use the termination limits as bounds. The velocities are unbounded in the
 observation space, so we \emph{clip} them at $\pm3.0$ and $\pm3.5$. Table~\ref{tab:t1_obs_ranges}
 justifies this: over 50k steps under a random policy and under the trained DQN, the largest observed
-values are 2.1 (cart velocity) and 2.9 (angular velocity), so no visited value exceeds the bounds and
+values are 2.83 (cart velocity) and 2.92 (angular velocity), so no visited value exceeds the bounds and
 almost no bin is wasted on states that never occur. We also support hand-made boundaries per dimension,
 which we use to study the pole angle.
 
@@ -64,81 +64,89 @@ which we use to study the pole angle.
 \centering\small
 \caption{Hyper-parameters. Only the switch named in each configuration changes.}
 \label{tab:hparams}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{lll}
 \toprule
  & CartPole / MountainCar & LunarLander \\
 \midrule
 Tabular $\alpha,\gamma$ & 0.1, 0.99 & -- \\
-Tabular $\varepsilon$ & $1\!\to\!0.01$ over 500k (CP) & -- \\
+Tabular $\varepsilon$ & $1\!\to\!0.01$ over 500k (CP); MC: as DQN & -- \\
 DQN net & 4/2$\to$128$\to$128 & 8$\to$256$\to$256 \\
 Optimiser & Adam, lr $5\!\cdot\!10^{-4}$ & Adam, lr $5\!\cdot\!10^{-4}$ \\
 Batch / buffer & 64 / 50k & 128 / 100k \\
 Learning starts & 1k & 10k \\
 Train freq. & every step & every 4 steps \\
 Target update & hard, every 500 & hard, every 1000 \\
-DQN $\varepsilon$ & $1\!\to\!0.05$ over 25k & $1\!\to\!0.05$ over 100k \\
+DQN $\varepsilon$ & $1\!\to\!0.05$ over 25k (MC: 30k) & $1\!\to\!0.05$ over 100k \\
 Loss / grad clip & Huber / 10 & Huber / 10 \\
-Budget & 1M tab., 200k DQN (CP) & 500k \\
+Budget & CP: 1M tab., 200k DQN; MC: 500k & 500k \\
 Evaluation & 10 ep. every 5k & 10 ep. every 10k \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}
 
 \paragraph{Protocol and statistics.} Hyper-parameters are in Table~\ref{tab:hparams}. At each checkpoint
 we run 10 greedy episodes on a separate environment, from the same evaluation seeds at every checkpoint,
 so that changes in the curve reflect the policy rather than the sampled start states. We report the
-mean over 5 seeds with a 95\% Student-$t$ interval ($t_{4,0.975}=2.78$, deliberately wider than the
+mean over 10 seeds with a 95\% Student-$t$ interval ($t_{9,0.975}=2.26$, deliberately wider than the
 normal 1.96). Plotted greedy curves use a short trailing average over checkpoints (5 for CartPole, 3
 elsewhere), applied per seed before aggregation; the tables use raw values. Summary metrics, computed
 per seed: \emph{final} (mean of the last 3 checkpoints), \emph{best}, \emph{AUC} (mean over all
 checkpoints, which rewards speed and stability), \emph{drop} = best $-$ final (forgetting) and steps to
-threshold. All runs use one CPU thread on a Ryzen 5 7235HS; we log CPU time per run.
+threshold. Every run uses one CPU thread. Seeds 0--4 (and 8--9 for LunarLander) ran on a laptop
+(Ryzen 5 7235HS) and the others on 4-vCPU GitHub Codespaces with identical pinned packages. Learning
+metrics use all seeds, and CPU-time figures use only the laptop runs so that timings come from one CPU.
 
 \tab{t1_obs_ranges}
 
 \section{Tier 1: tabular Q-learning vs.\ DQN}
 \subsection{CartPole-v1}
+\label{sec:cp}
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.92\textwidth]{t1_tabular_vs_dqn.pdf}
 \caption{CartPole-v1 on a common x-axis of environment steps. (a) Greedy evaluation; (b) training returns
 (20-episode moving average). DQN (200k budget) rises within the first $\sim$100k steps, while the tables
-need $\sim$400--550k. Bands: 95\% CI over 5 seeds.}
+need $\sim$400--550k. Bands: 95\% CI over 10 seeds; greedy curves smoothed over 5 checkpoints.}
 \label{fig:t1}
 \end{figure*}
 
 \tab{t1_cartpole}
 
 \paragraph{Sample efficiency.} Fig.~\ref{fig:t1} and Table~\ref{tab:t1_cartpole} show the core trade-off.
-With the best decay schedule, DQN first reaches a greedy return $\ge$475 after $58\pm29$k steps (5/5 seeds).
-The tabular agents need $395$--$537$k steps. At an \emph{equal} budget of 200k steps, DQN ($\varepsilon$
-decay 5k) scores $407\pm81$ against $176$--$205$ for the three tables. The reason is generalization: a
-gradient step on one state also changes $Q$ at nearby states, whereas a table cell learns only from its
-own visits.
+With the best decay schedule, DQN first reaches a greedy return $\ge$475 after $56\pm16$k environment steps
+(10/10 seeds). The fastest table (10 bins) needs $382\pm58$k, so DQN is $\approx$6.9$\times$ more
+sample-efficient. At an \emph{equal} budget of 200k steps, DQN ($\varepsilon$ decay 5k) scores $356\pm95$
+against $175$--$215$ for the three tables (Welch $t=4.2$, $p=0.002$ vs.\ 10 bins). The mechanism is
+generalization: a gradient step on one state also moves $Q$ at nearby states, whereas a table cell learns
+only from its own visits.
 
-\paragraph{Compute.} The same comparison reverses on CPU time. A tabular step costs
-$\approx$0.1\,ms and a DQN step $\approx$2.2\,ms (a forward pass to act plus a backward pass on a 64-sample
-batch), a factor of $\approx$22. To reach 475, the tables therefore need $\approx$38--54 CPU-seconds and
-DQN $\approx$130--320 CPU-seconds. The complete five-seed CartPole study cost 1.0 CPU-hour for the
-40 runs, 78\% of which went to the 15 DQN runs. DQN is \emph{sample-efficient but compute-hungry};
-tabular is the reverse.
+\paragraph{Compute.} The comparison reverses on CPU time. Measured on the same laptop, a tabular step costs
+0.097\,ms and a DQN step 2.24\,ms (a forward pass to act plus a backward pass on a 64-sample batch), a factor
+of 23. Reaching 475 therefore costs $\approx$37 CPU-seconds for the table and $\approx$124 for DQN:
+tabular learning is 3.4$\times$ cheaper in \emph{compute}. DQN is sample-efficient but compute-hungry,
+and tabular Q-learning is the reverse. Which one is ``faster'' depends on whether environment interaction
+or computation is the scarce resource.
 
-\paragraph{Number of bins.} More bins do not monotonically help. With 6 bins (1{,}296 states) the agent
-visits 39\% of the table and has the best final score ($408\pm32$). With 20 bins (160{,}000 states)
-it visits only 4.6\% of the cells. Its final score is lower ($280\pm199$), only 3/5 seeds ever reach 475,
-and the variance across seeds is the largest of the three. Ten bins is the fastest to the threshold
-(5/5 seeds, $395\pm53$k steps). The coarse table generalizes ``for free'', because many states share
-a cell, but it caps precision. The fine table is precise but data-starved. After 1M steps
-(\,$\approx$10k episodes) most of its cells have never been updated and still hold their initial value.
+\paragraph{Number of bins.} More bins do not monotonically help. Six bins (1{,}296 states) visit 39\% of the
+table, ten bins (10{,}000) 18\%, and twenty bins (160{,}000) only 4.6\%. Ten bins is the best compromise.
+It is the fastest to the threshold ($382\pm58$k steps, 10/10 seeds) and has the highest final score
+($392\pm81$). Twenty bins is the worst on every metric: final $263\pm96$, only 7/10 seeds ever reach 475,
+the largest drop after the peak ($212\pm88$) and the largest seed-to-seed spread. Six bins learns
+reliably (10/10) but more slowly ($518\pm59$k), because it cannot represent the policy as precisely. The
+difference between 6 and 20 bins in final score is suggestive but not significant at 5\% ($p=0.07$), so
+we state it as a trend. The mechanism is the classic bias--variance trade-off of state aggregation:
+coarse cells generalize ``for free'' but cap precision, and fine cells are precise but data-starved.
+After 1M steps (\,$\approx$10k episodes) 95\% of the 20-bin table has never been updated.
 
-\paragraph{Pole-angle boundaries.} Fig.~\ref{fig:angle} fixes all other dimensions at 10 bins and changes
-only the angle bins. With two angle bins (only the \emph{sign} of the tilt) the agent cannot tell a
-slight tilt from a dangerous one. It is the slowest learner at 200k steps ($123\pm29$ vs.\ $176\pm24$
-for 10 uniform bins) and has the lowest AUC ($219$ vs.\ $276$). Concentrating 10 bins in
-$|\theta|<0.1$\,rad, where the pole spends almost all its time, learns more slowly at first, because
-fine cells need more visits, and ends level with uniform binning. Resolution helps only where the agent
-has data to fill it.
+\paragraph{Pole-angle boundaries.} Fig.~\ref{fig:angle} fixes the other dimensions at 10 bins and changes
+only the angle bins. With two angle bins (only the \emph{sign} of the tilt) the agent cannot tell a slight
+tilt from a dangerous one. Over the first 200k steps it averages $107\pm8$ against $165\pm14$ for 10 uniform
+bins (Welch $p<10^{-6}$), and its AUC is the lowest ($226$ vs.\ $294$). Putting 10 bins inside
+$|\theta|<0.1$\,rad, where the pole spends nearly all its time, learns more slowly at first ($120\pm10$)
+because the fine cells need more visits, and ends level with uniform binning (final $362$ vs.\ $392$,
+CIs overlap). Resolution only pays off where the agent has enough data to fill it.
 
 \begin{figure}[t]
 \centering
@@ -148,15 +156,17 @@ has data to fill it.
 \end{figure}
 
 \paragraph{$\varepsilon$-decay and forgetting.} Fig.~\ref{fig:eps} varies only the length of the linear
-$\varepsilon$ decay. On CartPole, fast decay (5k steps) is best both early (171 mean greedy return in
-the first 50k steps) and late (final $433\pm134$, 5/5 seeds solve). The task needs little exploration,
-because random actions already visit the relevant states near upright. Slow decay (100k) wastes half
-the budget acting randomly: its training returns stay low until $\varepsilon$ is small, and only 1/5
-seeds reach 475 within 200k steps. Every DQN configuration also shows \emph{catastrophic forgetting}.
-Greedy returns peak at 500 and then collapse for some seeds (drop $= 67$--$205$; e.g.\ final greedy
-returns of the 25k runs are 452, 500, 120, 264, 89). Once the policy is good, the buffer fills with
-near-upright states only, and the network overwrites what it knew about recovering from large tilts.
-This explains why performance must be tracked \emph{during} training rather than only at the end.
+$\varepsilon$ decay. On CartPole, fast decay (5k steps) is best both early (mean greedy return $190\pm52$
+over the first 50k steps) and late ($379\pm48$ after 150k), and 10/10 seeds reach 475. CartPole needs little
+exploration: random actions already visit the relevant near-upright states, so the sooner the agent
+exploits, the sooner its data comes from good trajectories. Slow decay (100k) spends half the budget
+acting mostly at random. Its training returns stay low until $\varepsilon$ is small, and only 2/10 seeds
+reach 475 within 200k steps. Every fast- and medium-decay seed (20/20) also shows \emph{catastrophic
+forgetting}: the greedy return reaches $\ge$475 and later falls below 200, with mean drops of 160--200.
+Once the policy is good, the 50k-transition buffer fills with near-upright states only, and the
+network overwrites what it knew about recovering from large tilts. This is why performance must be
+tracked \emph{during} training rather than only at the end: a final-checkpoint evaluation alone would
+report $340\pm134$ for a method that had already solved the task.
 
 \begin{figure*}[t]
 \centering
@@ -165,9 +175,121 @@ This explains why performance must be tracked \emph{during} training rather than
 \label{fig:eps}
 \end{figure*}
 
-%%MOUNTAINCAR%%
+\subsection{MountainCar-v0: a planned negative result}
+\label{sec:mc}
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.98\textwidth]{t1_mountaincar.pdf}
+\caption{MountainCar-v0, 500k steps, identical $\varepsilon$ schedule for all agents. (a) Greedy return
+(mean $\pm$ 95\% CI). (b) Cumulative flag-reaching training episodes; thin lines are seeds, the thick line
+is the median. (c) Mean $Q(s,a)$ on DQN training batches per seed (symmetric-log axis). Before the flag
+every run sits at $-1/(1-\gamma)=-100$, and after it most runs diverge to impossible positive values.}
+\label{fig:mc}
+\end{figure*}
 
-%%TIER2%%
+\tab{t1_mountaincar}
+
+MountainCar pays $-1$ on every step, and an episode ends at the flag or after 200 steps. To isolate the
+cause of failure, all four agents share the same $\varepsilon$ schedule ($1\!\to\!0.05$ over 30k steps,
+or 150k for the second DQN). Fig.~\ref{fig:mc} and Table~\ref{tab:t1_mountaincar} summarize the result.
+
+\paragraph{Optimism, not tabular-ness, is what explores.} With $Q_0=0$, every true value ($<0$) lies
+below the initial estimate. Each visit lowers the tried action's value, so untried actions look better,
+and the agent sweeps the state space systematically. It reached the flag on \emph{10/10} seeds (median
+first success at 113k steps) and its greedy return improved to $-176\pm10$ (best $-148\pm6$). The
+\emph{same} agent with $Q_0=-100=-1/(1-\gamma)$ has no optimism bonus and failed on \emph{all} 10 seeds,
+with a greedy return of exactly $-200$ throughout. The decisive variable is the initialization, not the
+function class.
+
+\paragraph{Why DQN usually fails.} Until the first success, every transition in the buffer has $r=-1$,
+so every target is $-1+\gamma\max Q$, which converges to $-1/(1-\gamma)=-100$ in every state. In the
+14/20 DQN runs that never found the flag, the final mean $Q$ is $-99.4\pm0.1$ and the greedy return is
+$-200$. The network has learned that ``all states are equally bad'': the value landscape is flat, so no
+gradient points toward the goal. Exploration is left to $\varepsilon$-greedy dithering, which almost never
+produces the $\sim$100 coordinated back-and-forth pushes needed to build momentum. A longer
+$\varepsilon$ decay did not help (3/10 vs.\ 3/10 seeds reach the flag), because more \emph{undirected}
+noise is not more exploration.
+
+\paragraph{What happens when DQN does see the flag.} In 6/20 runs a lucky random trajectory reached the
+flag. Those runs then learned better greedy policies than the table ($-138\pm38$), but their value
+estimates \emph{diverged}. In MountainCar every true $Q$ is $\le 0$, yet after the first success four of
+the six runs climbed above $+4{,}900$ (up to $9.6\cdot10^4$), one reached $+79$ and only one stayed below
+zero. The pre-clip gradient norm rose from $\approx$0.4 to as much as $7.9\cdot10^3$. This is the
+``deadly triad'' of function approximation, bootstrapping and off-policy updates
+\citep[Sec.~11.3]{sutton2018}. The flag creates a sharp value cliff between $-1$ and $-100$ that the MLP
+cannot represent locally. The error spreads to nearby states and is then amplified by the $\max$ in
+every bootstrap target. The policy can stay reasonable because $\arg\max$ depends only on how the values
+rank, not on their scale. A tabular update can never diverge like this, because each update moves only
+its own cell toward its target. A unit test (\texttt{test\_dqn\_targets\_terminal\_and\_bootstrap})
+confirms that terminal transitions use $y=r$ exactly, which rules out a terminal-handling bug.
+
+
+\section{Tier 2: DQN ablations on LunarLander-v3}
+\label{sec:t2}
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{t2_ablation.pdf}
+\caption{LunarLander-v3 ablations, 500k steps, 10 seeds. Identical hyper-parameters except the removed
+component.}
+\label{fig:t2}
+\end{figure*}
+
+\tab{t2_lunarlander}
+
+The full agent solves LunarLander on 10/10 seeds, with a final greedy return of $234\pm29$
+(Table~\ref{tab:t2_lunarlander}, Fig.~\ref{fig:t2}). We then remove one stabilizer at a time and keep
+every other hyper-parameter fixed.
+
+\paragraph{No target network: learns, but cannot stay good.} Bootstrapping from the online network makes
+the regression target move with every gradient step. Early learning is just as fast. The peak greedy
+return matches the full agent ($275\pm7$ vs.\ $273\pm6$), and every seed reaches 200 at some point. But
+the agent cannot hold its policy. All 10/10 seeds that reached $\ge$200 later fell below 0, against 2/10
+for full DQN. The drop from peak to final is $99\pm35$ (full: $39\pm29$), and the final score is lower
+($176\pm37$, Welch $p=0.014$). The TD loss stays higher throughout (Fig.~\ref{fig:diag}a): the network
+keeps chasing a target that its own updates move. In this setting the target network buys
+\emph{stability} rather than speed.
+
+\paragraph{No replay buffer: never really learns.} Online DQN takes one gradient step per environment step
+on the transition that just happened. Consecutive LunarLander states are almost identical, so the
+mini-batches are strongly correlated and far from i.i.d. Each transition is also used once and
+discarded. The agent improves briefly to a best of $149\pm28$, then degrades to a final $-376\pm188$
+(Welch $p<10^{-4}$ vs.\ full), and only 2/10 seeds ever touch 200. Its diagnostics show the failure.
+The mean batch $Q$ inflates to $257$, $5.9\times$ the full agent's, while its policy is much worse,
+which is clear overestimation. Its gradient norms reach $\sim$300 before clipping, against $\sim$20
+for full DQN, and its loss never comes down (Fig.~\ref{fig:diag}). Each update fits the current stretch
+of trajectory and overwrites the rest (catastrophic interference). Its CPU cost is also the highest
+(24 vs.\ 10 min per run), because it updates on every step instead of every fourth.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{t2_diagnostics.pdf}
+\caption{Training diagnostics (10k-step block averages): Huber TD loss (log), mean $Q(s,a)$ on training
+batches, and pre-clip gradient norm (log).}
+\label{fig:diag}
+\end{figure*}
+
+\paragraph{Double and Dueling DQN (Tier 3B).} Neither extension changed the outcome measurably at this
+scale. Final returns were $234\pm29$ (Double) and $238\pm33$ (Dueling) against $234\pm29$ for full DQN
+($p=0.98$ and $0.82$), and all three solved 10/10 seeds. Double DQN also left the $Q$ level unchanged
+($43.2$ vs.\ $43.4$). With 4 actions, a target network refreshed every 1{,}000 steps, and a Huber loss,
+the overestimation that Double DQN removes is already small. Its benefit reported by
+\citet{vanhasselt2016} was on Atari, with 18 actions and much noisier value estimates. We report this
+as a null result rather than tuning until a difference appears.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{t2_extensions.pdf}
+\caption{Double and Dueling DQN vs.\ the full agent: indistinguishable within the 95\% CIs.}
+\label{fig:ext}
+\end{figure}
+
+\section{Compute cost}
+The full study comprises 170 runs and 22.3 CPU-hours (one thread per run). On the reference laptop, per
+run, a 1M-step CartPole table takes $\approx$100\,s, a 200k-step CartPole DQN $\approx$450\,s, and a
+500k-step LunarLander DQN $\approx$10 minutes (24 without replay). The deep agents account for most of
+the budget even though they use 5$\times$ fewer environment steps on CartPole. This is the
+sample-efficiency vs.\ compute trade-off of Sec.~\ref{sec:cp}, made concrete.
+
 
 \section{Analysis: limits of tabular RL and DQN in complex environments}
 \label{sec:theory}
@@ -203,8 +325,19 @@ $256^{7056}\approx10^{16{,}992}$. A table learns only about states it has visite
 chance of seeing the same frame twice (outside a few reset states) is essentially zero, so no update
 would ever be reused. What makes Atari tractable is \emph{generalization}: a convolutional network maps
 visually similar frames to similar features, so experience transfers between states that are never
-identical. That is the same mechanism that gave DQN its 4--7$\times$ sample-efficiency advantage on
+identical. That is the same mechanism that gave DQN its $\approx$7$\times$ sample-efficiency advantage on
 CartPole, applied at a far larger scale \citep{mnih2015}.
 
 \section{Conclusion}
-%%CONCLUSION%%
+Tabular Q-learning and DQN fail and succeed for identifiable reasons. On CartPole, DQN's ability to
+generalize between states made it $\approx$7$\times$ more sample-efficient, but it cost 23$\times$ more
+CPU per step, so the table was cheaper in compute. DQN also forgot solved policies, which only shows
+up when evaluation is tracked \emph{during} training. The table's performance depends on a precision/data
+trade-off in the discretization. MountainCar showed that what explores is optimism, not the function
+class. A pessimistic table fails exactly like DQN. DQN fails because a reward that is $-1$ everywhere
+flattens its value function, and when it does reach the flag, its estimates can diverge (the deadly
+triad). On LunarLander, the target network was needed to \emph{keep} a good policy and the replay
+buffer to \emph{find} one at all. Double and Dueling heads gave no measurable gain at this scale.
+Finally, none of these methods transfers to continuous control or pixel observations without replacing
+enumeration by generalization (Sec.~\ref{sec:theory}).
+

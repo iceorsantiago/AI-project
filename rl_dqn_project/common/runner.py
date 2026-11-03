@@ -61,7 +61,7 @@ def run_single(spec: dict) -> dict:
         log["n_updates"] = agent.n_updates
     agent.save(spec["weights_path"])
     log["spec"] = spec
-    log["host"] = {"cpu": platform.processor() or platform.machine(), "python": platform.python_version(),
+    log["host"] = {"node": platform.node(), "cpu": platform.processor() or platform.machine(), "python": platform.python_version(),
                    "torch": torch.__version__, "gymnasium": gym.__version__}
     return log
 

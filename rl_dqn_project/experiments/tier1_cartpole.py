@@ -147,11 +147,11 @@ def figures(exp: str) -> None:
                      f"{s['cpu_seconds'][0]:.0f}"])
     write_table(
         "t1_cartpole",
-        ["Config", "Steps", "Final", "Best", "AUC", "Early (≤50k)", "Drop", "k-steps to 475 (solved)", "States seen", "CPU s/run"],
+        ["Config", "Steps", "Final", "Best", "AUC", "Early (≤50k)", "Drop", "k-steps to 475 (solved)", "States seen", "CPU s/run†"],
         rows,
         "Tier 1, CartPole-v1. Greedy-evaluation returns (10 episodes per checkpoint, every 5k steps), mean "
         "$\\pm$ 95\\% t-CI over seeds. Final = mean of the last 3 checkpoints; AUC = mean over all checkpoints; "
-        "Drop = best $-$ final (forgetting); Early = mean greedy return over the first 50k steps.")
+        "Drop = best $-$ final (forgetting); Early = mean greedy return over the first 50k steps. $^\\dagger$CPU time from the runs on the reference laptop only (\\texttt{results/hosts.json}).")
 
 
 def main():

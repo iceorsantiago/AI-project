@@ -58,9 +58,17 @@ def main():
             a = np.abs(X[:, d])
             rows.append([pname, name, f"{np.percentile(a, 99):.3f}", f"{np.percentile(a, 99.9):.3f}",
                          f"{a.max():.3f}", f"{CARTPOLE_HIGH[d]:.4g}", f"{100 * np.mean(a <= CARTPOLE_HIGH[d]):.2f}%"])
-    write_table("t1_obs_ranges", ["Policy", "Dimension", "|x| p99", "|x| p99.9", "|x| max", "Clip bound", "Within bound"],
-                rows, "CartPole-v1 observation magnitudes over 50k steps. Velocities are unbounded in the "
-                      "observation space; the chosen clip bounds cover essentially all visited values.")
+    header = ["Policy", "Dimension", "|x| p99", "|x| p99.9", "|x| max", "Clip bound", "Within bound"]
+    caption = ("CartPole-v1 observation magnitudes over 50k steps. Velocities are unbounded in the "
+               "observation space; the chosen clip bounds cover essentially all visited values.")
+    write_table("t1_obs_ranges_all", header, rows, caption)  # every dimension (CSV for reference)
+    # the report only needs the two unbounded (velocity) dimensions
+    vel = [r for r in rows if "velocity" in r[1]]
+    write_table("t1_obs_ranges", ["Policy", "Dimension", "|x| p99.9", "|x| max", "Clip"],
+                [[r[0], r[1], r[3], r[4], r[5]] for r in vel],
+                "CartPole-v1 velocity magnitudes over 50k steps (random and trained policy). Both are unbounded "
+                "in the observation space; our clip bounds cover every visited value. Position and angle use the "
+                "termination limits.")
 
 
 if __name__ == "__main__":

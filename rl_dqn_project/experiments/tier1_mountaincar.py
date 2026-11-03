@@ -82,17 +82,29 @@ def figures(exp: str) -> None:
     for name, runs in R.items():
         steps, E = eval_matrix(runs)
         P.shaded(axes[0], steps, E, LABELS[name], COLORS[name], smooth=3)
+        # (b) and (c) are bimodal across seeds (flag found or never found), so a mean +- CI would be
+        # misleading (it even goes below 0 for counts). Show every seed as a thin line + the median.
         grid = np.linspace(0, runs[0]["total_steps"], 201)
-        P.shaded(axes[1], grid, cumulative_goals(runs, grid), LABELS[name], COLORS[name])
+        G = cumulative_goals(runs, grid)
+        for row in G:
+            axes[1].plot(grid, row, color=COLORS[name], lw=0.6, alpha=0.35)
+        axes[1].plot(grid, np.median(G, axis=0), color=COLORS[name], lw=1.8)
         if runs[0]["spec"]["agent"] == "dqn":
             s, Q = stat_matrix(runs, "q_mean")
-            P.shaded(axes[2], s, Q, LABELS[name], COLORS[name])
+            for row in Q:
+                axes[2].plot(s, row, color=COLORS[name], lw=0.7, alpha=0.6)
     axes[0].set_title("(a) Greedy evaluation", loc="left")
     axes[0].set_ylabel("Return")
-    axes[1].set_title("(b) Flag reached (training)", loc="left")
+    axes[1].set_title("(b) Flag reached (each seed)", loc="left")
     axes[1].set_ylabel("Cumulative successful episodes")
-    axes[2].set_title("(c) DQN mean Q(s,a)", loc="left")
-    P.hline(axes[2], -1 / (1 - GAMMA), "−1/(1−γ) = −100")
+    axes[2].set_title("(c) DQN mean Q(s,a), each seed", loc="left")
+    axes[2].set_yscale("symlog", linthresh=100)
+    axes[2].axhline(-1 / (1 - GAMMA), color=P.TEXT2, lw=0.8, ls=":")
+    axes[2].axhline(0, color=P.TEXT2, lw=0.6)
+    axes[2].annotate("−1/(1−γ) = −100", (0.02, -1 / (1 - GAMMA)), xycoords=("axes fraction", "data"),
+                     va="top", fontsize=7, color=P.TEXT2)
+    axes[2].annotate("true Q ≤ 0", (0.02, 0), xycoords=("axes fraction", "data"),
+                     va="bottom", fontsize=7, color=P.TEXT2)
     for ax in axes:
         P.style_steps_axis(ax, "Env. steps")
     handles, labels = axes[0].get_legend_handles_labels()

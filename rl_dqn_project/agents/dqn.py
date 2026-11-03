@@ -168,15 +168,7 @@ class DQNAgent:
         q_all = self.q(s)
         q_sa = q_all.gather(1, a.unsqueeze(1)).squeeze(1)
 
-        with torch.no_grad():  # the target is treated as a constant (semi-gradient TD)
-            target_net = self.q_target if self.use_target else self.q
-            if self.double:
-                a2 = self.q(s2).argmax(dim=1, keepdim=True)          # online net selects
-                q_next = target_net(s2).gather(1, a2).squeeze(1)     # target net evaluates
-            else:
-                q_next = target_net(s2).max(dim=1).values            # max_a' Q_target(s', a')
-            y = r + self.gamma * (1.0 - done) * q_next               # no bootstrap after a true terminal
-
+        y = self.td_targets(r, s2, done)
         loss = F.smooth_l1_loss(q_sa, y)  # Huber loss: quadratic near 0, linear for big TD errors
         self.optim.zero_grad()
         loss.backward()
@@ -188,6 +180,16 @@ class DQNAgent:
         self._stats["q_mean"].append(q_sa.mean().item())
         self._stats["q_max"].append(q_all.max().item())
         self._stats["grad_norm"].append(float(grad_norm))
+
+    @torch.no_grad()  # the target is treated as a constant (semi-gradient TD)
+    def td_targets(self, r, s2, done) -> torch.Tensor:
+        target_net = self.q_target if self.use_target else self.q
+        if self.double:
+            a2 = self.q(s2).argmax(dim=1, keepdim=True)          # online net selects
+            q_next = target_net(s2).gather(1, a2).squeeze(1)     # target net evaluates
+        else:
+            q_next = target_net(s2).max(dim=1).values            # max_a' Q_target(s', a')
+        return r + self.gamma * (1.0 - done) * q_next            # no bootstrap after a true terminal
 
     def _maybe_update_target(self, t: int) -> None:
         if not self.use_target:

@@ -59,14 +59,20 @@ def write_table(name: str, header: list[str], rows: list[list[str]], caption: st
         w.writerows(rows)
 
     def tex(s: str) -> str:
-        return (s.replace("±", r"$\pm$").replace("_", r"\_").replace("%", r"\%")
-                .replace("ε", r"$\varepsilon$").replace("τ", r"$\tau$"))
+        for a, b in [("_", r"\_"), ("%", r"\%"), ("±", r"$\pm$"), ("ε", r"$\varepsilon$"), ("τ", r"$\tau$"),
+                     ("≤", r"$\le$"), ("≥", r"$\ge$"), ("−", "-"), ("†", r"$^\dagger$"), ("₀", r"$_0$"),
+                     ("|x|", r"$|x|$")]:
+            s = s.replace(a, b)
+        return s
 
-    lines = [r"\begin{table}[t]", r"\centering\small", rf"\caption{{{caption}}}", rf"\label{{tab:{name}}}",
+    wide = len(header) > 5  # wide tables span both columns of the two-column report
+    env, width = ("table*", r"\textwidth") if wide else ("table", r"\columnwidth")
+    lines = [rf"\begin{{{env}}}[t]", r"\centering\small", rf"\caption{{{caption}}}", rf"\label{{tab:{name}}}",
+             rf"\resizebox{{{width}}}{{!}}{{%",
              r"\begin{tabular}{l" + "r" * (len(header) - 1) + "}", r"\toprule",
              " & ".join(tex(h) for h in header) + r" \\", r"\midrule"]
     lines += [" & ".join(tex(c) for c in row) + r" \\" for row in rows]
-    lines += [r"\bottomrule", r"\end{tabular}", r"\end{table}"]
+    lines += [r"\bottomrule", r"\end{tabular}}", rf"\end{{{env}}}"]
     (TABLE_DIR / f"{name}.tex").write_text("\n".join(lines) + "\n")
     print(f"  wrote tables/{name}.csv / .tex")
     # also echo to the terminal

@@ -51,6 +51,20 @@ def test_gather_picks_taken_actions():
     assert q.gather(1, a.unsqueeze(1)).squeeze(1).tolist() == [3.0, 4.0]
 
 
+def test_dqn_targets_terminal_and_bootstrap():
+    ag = DQNAgent(2, 3, seed=0, gamma=0.9)
+    s2 = torch.randn(2, 2)
+    r = torch.tensor([-1.0, -1.0])
+    done = torch.tensor([1.0, 0.0])
+    y = ag.td_targets(r, s2, done)
+    assert y[0].item() == -1.0                                   # terminal: y = r exactly, no bootstrap
+    expected = -1.0 + 0.9 * ag.q_target(s2[1:]).max().item()
+    assert abs(y[1].item() - expected) < 1e-6                    # non-terminal: r + gamma * max Q_target
+    dbl = DQNAgent(2, 3, seed=0, gamma=0.9, double=True)
+    a_star = dbl.q(s2[1:]).argmax().item()
+    assert abs(dbl.td_targets(r, s2, done)[1].item() - (-1.0 + 0.9 * dbl.q_target(s2[1:])[0, a_star].item())) < 1e-6
+
+
 def test_replay_buffer_wraps():
     buf = ReplayBuffer(3, 1, np.random.default_rng(0))
     for i in range(5):

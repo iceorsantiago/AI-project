@@ -55,6 +55,27 @@ def stat_matrix(runs: list[dict], key: str) -> tuple[np.ndarray, np.ndarray]:
     return steps, np.array([[s.get(key, np.nan) for s in r["stats"]] for r in runs], dtype=float)
 
 
+def timing_runs(runs: list[dict]) -> list[dict]:
+    """Runs whose CPU/wall-clock times are comparable: those run on the reference machine.
+
+    results/hosts.json lists which seeds ran on which machine. Learning curves always use every seed,
+    but timings from different CPUs must not be averaged, so we keep only the 'laptop' seeds.
+    Without hosts.json (e.g. a fresh single-machine reproduction) every run is used.
+    """
+    from pathlib import Path
+    import json
+
+    hosts = Path(__file__).resolve().parents[1] / "results" / "hosts.json"
+    if not runs or not hosts.exists():
+        return runs
+    exp = runs[0]["spec"].get("experiment", "")
+    seeds = json.loads(hosts.read_text()).get(exp, {}).get("laptop")
+    if seeds is None:
+        return runs
+    keep = [r for r in runs if r["spec"]["seed"] in seeds]
+    return keep or runs
+
+
 def summarize(runs: list[dict], threshold: float | None = None, last_k: int = 3) -> dict:
     """Per-config metrics, each computed per seed and then reported as mean +- 95% CI.
 
@@ -76,8 +97,8 @@ def summarize(runs: list[dict], threshold: float | None = None, last_k: int = 3)
         per_seed["steps_to_threshold"] = np.array(
             [steps[np.argmax(h)] if h.any() else np.nan for h in hit], dtype=float)
         per_seed["solved_frac"] = hit.any(axis=1).astype(float)
-    per_seed["cpu_seconds"] = np.array([r["cpu_seconds"] for r in runs])
-    per_seed["wall_seconds"] = np.array([r["wall_seconds"] for r in runs])
+    per_seed["cpu_seconds"] = np.array([r["cpu_seconds"] for r in timing_runs(runs)])
+    per_seed["wall_seconds"] = np.array([r["wall_seconds"] for r in timing_runs(runs)])
     per_seed["episodes"] = np.array([r["n_episodes"] for r in runs], dtype=float)
 
     out = {"n_seeds": len(runs)}

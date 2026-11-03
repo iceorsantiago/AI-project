@@ -6,25 +6,37 @@ the step-by-step recipes for live modifications.
 
 ---
 
-## 1. The 60-second story
+## 1. The 60-second story (numbers: 10 seeds, `python analysis.py`)
 
-1. **Tier 1, CartPole.** Tabular Q-learning needs a discretized state. More bins mean a finer policy,
-   but also more table cells to fill with data. DQN generalizes between similar states, so it reaches
-   500 in far fewer *environment steps*. Each of those steps costs much more CPU, though: the
-   sample-efficiency vs compute trade-off.
-2. **MountainCar (negative result).** The reward is −1 everywhere until the flag. Random exploration
-   almost never reaches the flag in 200 steps, so DQN's buffer holds only −1 transitions. The network
-   learns Q ≈ −100 everywhere ("all states equally bad") and has no gradient toward the goal.
-   Tabular Q with **optimistic init (Q₀ = 0)** explores systematically, because untried actions look
-   better than tried ones. With Q₀ = −100 the same tabular agent also fails, so optimism, not "tabular",
-   is the cause.
-3. **Tier 2, LunarLander.** We remove each DQN stabilizer:
-   - Without a **target network**, the regression target moves with every gradient step.
-   - Without **replay**, updates come from consecutive, highly correlated transitions with batch size 1.
-   - Double and Dueling are Tier-3B extras: one reduces max-overestimation, the other separates V(s) from A(s,a).
-4. **Methodology.** We use 5 seeds and 95 % Student-t confidence intervals. The x-axis is always
-   environment steps. A greedy (ε = 0) evaluation with frozen weights runs every 5k/10k steps on fixed
-   evaluation seeds and is plotted separately from the training returns. CPU time is logged per run.
+1. **Tier 1, CartPole.**
+   - DQN reaches 475 in **56k** steps against **382k** for the best table (10 bins), so it is ~7× more
+     sample-efficient, because it generalizes between nearby states.
+   - Each DQN step costs **23×** more CPU, so the table gets there with **3.4× less compute**.
+   - 10 bins beat 6 (too coarse to express a precise policy) and 20 (95 % of the cells never visited).
+   - Every fast-decay DQN seed solved the task and then **forgot** it (fell below 200), which is why we
+     evaluate during training.
+2. **MountainCar (negative result).**
+   - The reward is −1 everywhere until the flag, so DQN's targets make Q converge to −1/(1−γ) = −100:
+     "all states are equally bad". 14/20 DQN runs never found the flag.
+   - The **same** tabular agent finds the flag 10/10 times with Q₀ = 0 (optimistic) and 0/10 times with
+     Q₀ = −100. Optimism, not "tabular", is what explores.
+   - When DQN *did* find the flag (6/20), its Q-values **diverged** to as much as +95,000, although every
+     true value is ≤ 0. That is the deadly triad. Its greedy policy still improved, because argmax only
+     depends on how the values rank.
+3. **Tier 2, LunarLander.**
+   - **No target network:** learns just as fast (same peak, 275), but 10/10 seeds later crash below 0.
+     Its final score is 176 vs 234 (p = 0.014). The moving target costs stability.
+   - **No replay buffer:** peaks at 149 and ends at −376, with Q 5.9× too high and gradients 15× larger.
+     Correlated, batch-1 updates break SGD's i.i.d. assumption.
+   - **Double / Dueling:** no measurable difference at this scale (p = 0.98 and 0.82). We say so honestly.
+4. **Methodology.**
+   - 10 seeds, 95 % Student-t CIs (t₉ = 2.26), and Welch tests for the key claims.
+   - The x-axis is always environment steps.
+   - Greedy (ε = 0) evaluation with frozen weights every 5k/10k steps on fixed evaluation seeds, plotted
+     separately from training returns.
+   - CPU time comes from one machine.
+   - Seeds 5–9 ran on GitHub Codespaces, and each run is an independent JSON file
+     (`results/hosts.json`).
 
 ---
 
@@ -39,7 +51,7 @@ the step-by-step recipes for live modifications.
   (a mixed-radix number), so the Q-table is a 2-D array `Q[n_states, n_actions]`.
 - Bounds: position ±2.4 and angle ±0.2095 rad (12°) are the **termination** limits. The velocities are
   unbounded, so we clip at 3.0 / 3.5. `experiments/obs_ranges.py` shows that 100 % of visited values
-  (random and trained policy) fall inside these bounds (table `t1_obs_ranges`).
+  (random and trained policy) fall inside these bounds: max |ẋ| = 2.83, max |θ̇| = 2.92 (table `t1_obs_ranges`).
 - `edges={dim: [...]}` gives hand-made, non-uniform boundaries (used for the angle study).
 
 ### `agents/tabular.py`
@@ -131,16 +143,33 @@ episode lasts 500. Per episode, the agents consume very different amounts of dat
 for acting plus a backward pass on a batch of 64–128, against a single table lookup for tabular.
 Look at the `CPU s/run` columns.
 
-**"Why does DQN fail on MountainCar?"** Covered in Section 1. Show the mean-Q panel converging to
-−1/(1−γ) = −100 and the zero count of flag hits.
+**"Why does DQN fail on MountainCar?"** Covered in Section 1. Show Fig. `t1_mountaincar` (c): every seed sits at
+−100 until its first flag. Then show (b): 14/20 DQN runs never reach it.
+
+**"Your Q-values are +90,000 in a task where rewards are −1. Is that a bug?"** No. The test
+`test_dqn_targets_terminal_and_bootstrap` proves y = r on terminal transitions, and divergence starts only
+*after* the first flag (Q ≈ −100 before it). This is the deadly triad (Sutton & Barto §11.3): function
+approximation + bootstrapping + off-policy data. The value cliff at the flag can't be fit locally by the MLP,
+the error leaks to neighbouring states, and `max` in the target amplifies it. A table can't diverge, because
+each update only moves its own cell. Fixes we'd try: normalize observations (velocity is ~0.07 and
+position ~1), a lower learning rate, Double DQN, or a soft target update (τ = 0.005).
+
+**"Double DQN didn't help. Did you implement it wrong?"** `td_targets` selects with `self.q` and evaluates with
+`self.q_target` (tested). With 4 actions, a 1,000-step target refresh and a Huber loss, the overestimation
+is small to begin with: full DQN's mean Q is 43.4 and Double's is 43.2. The original gains were on Atari.
+
+**"Why is no-replay so much more expensive?"** It updates on *every* step instead of every 4th, so it makes
+4× more gradient steps, each on a batch of 1. It's slower and still worse.
 
 **"Why the Huber loss?"** Robustness to large TD errors early in training (outliers); it is the
 same choice as Mnih et al. (2015).
 
 **"Terminated vs truncated?"** See the tabular section. For a time-limit truncation we still bootstrap.
 
-**"Is your result statistically meaningful?"** We report 5 seeds with 95 % t-CIs. Where the CIs
-overlap, we say so and do not claim a difference.
+**"Is your result statistically meaningful?"** 10 seeds, 95 % t-CIs, and Welch t-tests (p-values in
+`results/analysis.md`). Where CIs overlap (6 vs 20 bins, p = 0.07; Double/Dueling vs full), we call it a
+trend or a null result. Going from 5 to 10 seeds actually reversed our 6-vs-10-bins ranking, which is
+exactly why seeds matter.
 
 **"What would you use for HalfCheetah / BipedalWalker / Atari?"** See the report's theory section:
 5⁶ = 15,625 discrete actions, 10¹⁷ table cells, 256⁷⁰⁵⁶ pixel states. Continuous actions call for
