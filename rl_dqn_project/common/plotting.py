@@ -30,11 +30,22 @@ def _kfmt(x, _pos):
     return f"{x / 1e6:g}M" if abs(x) >= 1e6 else (f"{x / 1e3:g}k" if abs(x) >= 1e3 else f"{x:g}")
 
 
-def shaded(ax, steps, matrix, label, color, alpha=0.15, ls="-"):
-    """Mean across seeds (rows) with a shaded 95% t-CI band; NaN columns are ignored."""
+def trailing_mean(matrix, k: int):
+    """Per-seed trailing moving average over k points (window shrinks at the start). Display only."""
+    if k <= 1:
+        return matrix
+    c = np.cumsum(np.insert(matrix, 0, 0.0, axis=1), axis=1)
+    idx = np.arange(1, matrix.shape[1] + 1)
+    lo = np.maximum(idx - k, 0)
+    return (c[:, idx] - c[:, lo]) / (idx - lo)
+
+
+def shaded(ax, steps, matrix, label, color, alpha=0.15, ls="-", smooth=1):
+    """Mean across seeds (rows) with a shaded 95% t-CI band; NaN columns are ignored.
+    smooth=k applies a k-point trailing average to each seed BEFORE the CI is computed."""
     matrix = np.asarray(matrix, dtype=float)
     keep = ~np.isnan(matrix).any(axis=0)
-    steps, matrix = np.asarray(steps)[keep], matrix[:, keep]
+    steps, matrix = np.asarray(steps)[keep], trailing_mean(matrix[:, keep], smooth)
     m, h = mean_ci(matrix)
     ax.plot(steps, m, color=color, label=f"{label} (n={matrix.shape[0]})", ls=ls)
     ax.fill_between(steps, m - h, m + h, color=color, alpha=alpha, linewidth=0)
@@ -49,6 +60,11 @@ def hline(ax, y, text):
     ax.axhline(y, color=TEXT2, lw=0.8, ls=":")
     ax.annotate(text, (1.0, y), xycoords=("axes fraction", "data"), ha="right", va="bottom",
                 fontsize=7, color=TEXT2)
+
+
+def legend_below(fig, ax, ncol=4, y=-0.02):
+    h, l = ax.get_legend_handles_labels()
+    fig.legend(h, l, loc="upper center", ncol=ncol, bbox_to_anchor=(0.5, y))
 
 
 def save(fig, path: Path):

@@ -15,7 +15,7 @@ import _common  # noqa: F401
 import numpy as np
 import matplotlib.pyplot as plt
 
-from _common import figpath, fmt, parse_args, use_quick_dirs, write_table
+from _common import figpath, fmt, parse_args, seed_list, use_quick_dirs, write_table
 from common import plotting as P
 from common.runner import load_runs, run_experiment
 from common.stats import eval_matrix, stat_matrix, summarize, train_matrix
@@ -62,7 +62,7 @@ def figures(exp: str) -> None:
             if name not in R:
                 continue
             steps, E = eval_matrix(R[name])
-            P.shaded(axes[0], steps, E, LABELS[name], COLORS[name])
+            P.shaded(axes[0], steps, E, LABELS[name], COLORS[name], smooth=3)
             grid = np.linspace(0, R[name][0]["total_steps"], 201)
             P.shaded(axes[1], grid, train_matrix(R[name], grid), LABELS[name], COLORS[name])
         for ax, t in zip(axes, ["(a) Greedy evaluation (ε = 0)", "(b) Training returns (20-ep. avg.)"]):
@@ -70,7 +70,8 @@ def figures(exp: str) -> None:
             P.hline(ax, SOLVED, "solved = 200")
             ax.set_title(t, loc="left")
         axes[0].set_ylabel("Episode return")
-        axes[0].legend(loc="lower right")
+        fig.tight_layout()
+        P.legend_below(fig, axes[0], ncol=3)
         P.save(fig, figpath(fname))
 
     # diagnostics: TD loss (log scale), mean Q of taken actions, gradient norm
@@ -116,7 +117,7 @@ def figures(exp: str) -> None:
 def main():
     args = parse_args(__doc__)
     exp = "tier2_lunarlander_quick" if args.quick else "tier2_lunarlander"
-    seeds = list(range(2 if args.quick else args.seeds))
+    seeds = seed_list(args)
     if args.quick:
         use_quick_dirs()
     if not args.plot_only:

@@ -21,13 +21,19 @@ def use_quick_dirs() -> None:
     TABLE_DIR = ROOT / "results" / "quick" / "tables"
 
 
+def seed_list(args) -> list[int]:
+    return list(range(args.seed_start, args.seed_start + (2 if args.quick else args.seeds)))
+
+
 def figpath(name: str) -> Path:
     return FIG_DIR / name
 
 
 def parse_args(description: str) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=description)
-    p.add_argument("--seeds", type=int, default=5, help="number of seeds (0..N-1), default 5")
+    p.add_argument("--seeds", type=int, default=5, help="number of seeds, default 5")
+    p.add_argument("--seed-start", type=int, default=0,
+                   help="first seed (runs seed-start .. seed-start+seeds-1); lets several machines split the seeds")
     p.add_argument("--workers", type=int, default=None, help="parallel processes (default: cores - 1)")
     p.add_argument("--force", action="store_true", help="recompute runs even if cached")
     p.add_argument("--plot-only", action="store_true", help="only rebuild figures/tables from cached runs")

@@ -20,7 +20,7 @@ import _common  # noqa: F401
 import numpy as np
 import matplotlib.pyplot as plt
 
-from _common import figpath, fmt, parse_args, use_quick_dirs, write_table
+from _common import figpath, fmt, parse_args, seed_list, use_quick_dirs, write_table
 from common import plotting as P
 from common.runner import load_runs, run_experiment
 from common.stats import eval_matrix, stat_matrix, summarize
@@ -31,7 +31,7 @@ EPS = {"eps_start": 1.0, "eps_end": 0.05, "eps_decay_steps": 30_000}
 
 
 def build_configs(quick: bool) -> dict[str, dict]:
-    steps = 30_000 if quick else 300_000
+    steps = 30_000 if quick else 500_000
 
     def tab(init):
         return {"env_id": ENV, "agent": "tabular", "total_steps": steps, "eval_every": 5_000, "eval_episodes": 10,
@@ -81,7 +81,7 @@ def figures(exp: str) -> None:
     fig, axes = plt.subplots(1, 3, figsize=(7.4, 2.5))
     for name, runs in R.items():
         steps, E = eval_matrix(runs)
-        P.shaded(axes[0], steps, E, LABELS[name], COLORS[name])
+        P.shaded(axes[0], steps, E, LABELS[name], COLORS[name], smooth=3)
         grid = np.linspace(0, runs[0]["total_steps"], 201)
         P.shaded(axes[1], grid, cumulative_goals(runs, grid), LABELS[name], COLORS[name])
         if runs[0]["spec"]["agent"] == "dqn":
@@ -112,14 +112,14 @@ def figures(exp: str) -> None:
     write_table("t1_mountaincar",
                 ["Config", "Final greedy", "Best greedy", "Seeds reaching flag", "Median first flag", "Successful train eps", "CPU s/run"],
                 rows,
-                "MountainCar-v0 (sparse reward, 300k steps, same $\\varepsilon$ schedule for all). "
+                "MountainCar-v0 (sparse reward, 500k steps, same $\\varepsilon$ schedule for all). "
                 "Greedy returns are mean $\\pm$ 95\\% CI; -200 means the flag was never reached.")
 
 
 def main():
     args = parse_args(__doc__)
     exp = "tier1_mountaincar_quick" if args.quick else "tier1_mountaincar"
-    seeds = list(range(2 if args.quick else args.seeds))
+    seeds = seed_list(args)
     if args.quick:
         use_quick_dirs()
     if not args.plot_only:

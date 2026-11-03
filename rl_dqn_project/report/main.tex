@@ -1,0 +1,32 @@
+\documentclass[10pt,twocolumn]{article}
+
+\usepackage[margin=0.75in,columnsep=0.25in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\usepackage{natbib}
+\usepackage{caption}
+\usepackage{microtype}
+\captionsetup{font=small,labelfont=bf}
+\graphicspath{{../results/figures/}}
+\setlength{\parskip}{0.2em}
+
+\newcommand{\tab}[1]{\input{../results/tables/#1.tex}}
+
+\title{\vspace{-1.2em}Tabular Q-Learning versus Deep Q-Networks:\\ Sample Efficiency, Sparse Rewards and DQN Ablations}
+\author{Aispur Santiago \quad Amaya Bryan\\[0.2em]
+\small Intelligent Agents --- Instructor: PhD Armas Rolando}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+%% RESULTS-DEPENDENT TEXT IS FILLED IN AFTER THE EXPERIMENTS FINISH
+\input{body.tex}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+\end{document}

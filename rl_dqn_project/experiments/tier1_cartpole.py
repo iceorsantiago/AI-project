@@ -17,7 +17,7 @@ import _common  # noqa: F401  (sets sys.path)
 import numpy as np
 import matplotlib.pyplot as plt
 
-from _common import figpath, fmt, parse_args, use_quick_dirs, write_table
+from _common import figpath, fmt, parse_args, seed_list, use_quick_dirs, write_table
 from common import plotting as P
 from common.runner import load_runs, run_experiment
 from common.stats import eval_matrix, summarize, train_matrix
@@ -80,17 +80,18 @@ def figures(exp: str) -> None:
         if name not in R:
             continue
         steps, E = eval_matrix(R[name])
-        P.shaded(axes[0], steps, E, LABELS[name], colors[name])
+        P.shaded(axes[0], steps, E, LABELS[name], colors[name], smooth=5)
         grid = np.linspace(0, R[name][0]["total_steps"], 201)
         P.shaded(axes[1], grid, train_matrix(R[name], grid), LABELS[name], colors[name])
-    for ax, title in zip(axes, ["(a) Greedy evaluation (ε = 0, frozen weights)", "(b) Training episodes (ε-greedy)"]):
+    for ax, title in zip(axes, ["(a) Greedy eval. (ε = 0, frozen)", "(b) Training returns (ε-greedy)"]):
         P.style_steps_axis(ax)
         P.hline(ax, SOLVED, "solved = 475")
         ax.set_title(title, loc="left")
-        ax.set_xscale("symlog", linthresh=1e4)
         ax.set_xlim(0, None)
+        ax.set_ylim(0, 520)
     axes[0].set_ylabel("Episode return")
-    axes[0].legend(loc="upper left")
+    fig.tight_layout()
+    P.legend_below(fig, axes[0])
     P.save(fig, figpath("t1_tabular_vs_dqn"))
 
     # ---- C: pole-angle boundaries ----------------------------------------------------------------
@@ -99,12 +100,13 @@ def figures(exp: str) -> None:
         if name in R:
             steps, E = eval_matrix(R[name])
             label = "Angle: 10 uniform" if name == "tabular_bins10" else LABELS[name]
-            P.shaded(ax, steps, E, label, P.PALETTE[i])
+            P.shaded(ax, steps, E, label, P.PALETTE[i], smooth=5)
     P.style_steps_axis(ax)
     P.hline(ax, SOLVED, "475")
     ax.set_ylabel("Greedy return")
+    ax.set_ylim(0, 520)
     ax.set_title("Tabular: pole-angle bin boundaries", loc="left")
-    ax.legend(loc="upper left")
+    ax.legend(loc="lower right")
     P.save(fig, figpath("t1_angle_boundaries"))
 
     # ---- D: epsilon decay, early vs late -----------------------------------------------------------
@@ -113,7 +115,7 @@ def figures(exp: str) -> None:
         if name not in R:
             continue
         steps, E = eval_matrix(R[name])
-        P.shaded(axes[0], steps, E, LABELS[name], P.PALETTE[i])
+        P.shaded(axes[0], steps, E, LABELS[name], P.PALETTE[i], smooth=3)
         grid = np.linspace(0, R[name][0]["total_steps"], 201)
         P.shaded(axes[1], grid, train_matrix(R[name], grid), LABELS[name], P.PALETTE[i])
         d = R[name][0]["spec"]["agent_kwargs"]["eps_decay_steps"]
@@ -121,10 +123,12 @@ def figures(exp: str) -> None:
             ax.axvline(d, color=P.PALETTE[i], lw=0.7, ls="--", alpha=0.7)
     for ax, title in zip(axes, ["(a) Greedy evaluation", "(b) Training returns"]):
         P.style_steps_axis(ax)
+        ax.set_ylim(0, 520)
         P.hline(ax, SOLVED, "475")
         ax.set_title(title, loc="left")
     axes[0].set_ylabel("Episode return")
-    axes[0].legend(loc="lower right")
+    fig.tight_layout()
+    P.legend_below(fig, axes[0], ncol=3)
     P.save(fig, figpath("t1_dqn_eps_decay"))
 
     # ---- tables -----------------------------------------------------------------------------------
@@ -153,7 +157,7 @@ def figures(exp: str) -> None:
 def main():
     args = parse_args(__doc__)
     exp = "tier1_cartpole_quick" if args.quick else "tier1_cartpole"
-    seeds = list(range(2 if args.quick else args.seeds))
+    seeds = seed_list(args)
     if args.quick:
         use_quick_dirs()
     if not args.plot_only:

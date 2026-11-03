@@ -18,5 +18,6 @@ class LinearSchedule:
         self.start, self.end, self.duration = float(start), float(end), max(int(duration), 1)
 
     def __call__(self, t: int) -> float:
-        frac = min(t / self.duration, 1.0)
-        return self.start + frac * (self.end - self.start)
+        if t >= self.duration:
+            return self.end
+        return self.start + (t / self.duration) * (self.end - self.start)
