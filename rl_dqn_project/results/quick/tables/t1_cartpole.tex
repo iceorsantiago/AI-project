@@ -1,0 +1,19 @@
+\begin{table}[t]
+\centering\small
+\caption{Tier 1, CartPole-v1. Greedy-evaluation returns (10 episodes per checkpoint, every 5k steps), mean $\pm$ 95\% t-CI over seeds. Final = mean of the last 3 checkpoints; AUC = mean over all checkpoints; Drop = best $-$ final (forgetting); Early = mean greedy return over the first 50k steps.}
+\label{tab:t1_cartpole}
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+Config & Steps & Final & Best & AUC & Early (≤50k) & Drop & k-steps to 475 (solved) & States seen & CPU s/run \\
+\midrule
+Tabular, 6 bins & 60k & 153.9 $\pm$ 109.3 & 199.7 $\pm$ 383.7 & 137.7 $\pm$ 113.6 & 146.5 & 45.8 $\pm$ 274.5 & -- (0/2) & 20.5\% & 3 \\
+Tabular, 10 bins & 60k & 123.0 $\pm$ 125.6 & 129.2 $\pm$ 139.1 & 112.4 $\pm$ 123.6 & 119.9 & 6.1 $\pm$ 13.6 & -- (0/2) & 5.2\% & 5 \\
+Tabular, 20 bins & 60k & 114.2 $\pm$ 52.5 & 131.3 $\pm$ 129.6 & 101.6 $\pm$ 93.6 & 107.2 & 17.1 $\pm$ 77.1 & -- (0/2) & 1.4\% & 6 \\
+Angle: 2 bins (sign only) & 60k & 180.5 $\pm$ 448.5 & 190.4 $\pm$ 322.1 & 140.5 $\pm$ 304.4 & 144.9 & 9.9 $\pm$ 126.4 & -- (0/2) & 11.4\% & 4 \\
+Angle: fine near 0 & 60k & 61.6 $\pm$ 19.1 & 61.9 $\pm$ 22.2 & 51.3 $\pm$ 7.3 & 52.7 & 0.2 $\pm$ 3.2 & -- (0/2) & 4.4\% & 3 \\
+DQN, $\varepsilon$ decay 5k & 20k & 126.4 $\pm$ 87.7 & 198.3 $\pm$ 43.2 & 125.5 $\pm$ 41.7 & 144.4 & 71.9 $\pm$ 44.5 & -- (0/2) & -- & 36 \\
+DQN, $\varepsilon$ decay 25k & 20k & 101.5 $\pm$ 127.7 & 157.8 $\pm$ 216.6 & 102.5 $\pm$ 17.0 & 115.6 & 56.2 $\pm$ 88.9 & -- (0/2) & -- & 35 \\
+DQN, $\varepsilon$ decay 100k & 20k & 204.9 $\pm$ 1339.9 & 339.8 $\pm$ 1515.9 & 170.1 $\pm$ 612.6 & 200.1 & 134.9 $\pm$ 176.0 & -- (0/2) & -- & 34 \\
+\bottomrule
+\end{tabular}
+\end{table}
