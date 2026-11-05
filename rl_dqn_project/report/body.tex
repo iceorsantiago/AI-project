@@ -10,6 +10,8 @@ converges to a flat $Q\approx-1/(1-\gamma)$. An optimistically initialized table
 pessimistically initialized one fails like DQN, which isolates optimism as the cause. On LunarLander-v3,
 ablations show how the target network and the replay buffer each contribute to stability. We close
 with an analysis of why neither family scales to continuous control or pixel observations.
+Code, logs and figures are available at
+\url{https://github.com/iceorsantiago/AI-project}.
 \end{abstract}
 
 \section{Introduction}
@@ -150,7 +152,7 @@ CIs overlap). Resolution only pays off where the agent has enough data to fill i
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{t1_angle_boundaries.pdf}
+\includegraphics[width=0.5\textwidth]{t1_angle_boundaries.pdf}
 \caption{Tabular CartPole: only the pole-angle boundaries change; all other dimensions use 10 bins.}
 \label{fig:angle}
 \end{figure}
@@ -278,7 +280,7 @@ as a null result rather than tuning until a difference appears.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{t2_extensions.pdf}
+\includegraphics[width=0.72\textwidth]{t2_extensions.pdf}
 \caption{Double and Dueling DQN vs.\ the full agent: indistinguishable within the 95\% CIs.}
 \label{fig:ext}
 \end{figure}

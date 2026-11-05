@@ -1,32 +1,86 @@
-\documentclass[10pt,twocolumn]{article}
+\documentclass[12pt,a4paper]{article}
 
-\usepackage[margin=0.75in,columnsep=0.25in]{geometry}
-\usepackage{amsmath,amssymb}
-\usepackage{booktabs}
+% -------------------- PACKAGES (Yachay Tech report template) --------------------
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+
 \usepackage{graphicx}
-\usepackage{float}
-\usepackage[hidelinks]{hyperref}
-\usepackage{xcolor}
-\usepackage{natbib}
+\usepackage{geometry}
+\newgeometry{top=2cm, bottom=2cm, left=2cm, right=2cm}
+
+\usepackage{setspace}
+\usepackage{tabularx}
+\usepackage{multicol}
+\usepackage[table,xcdraw]{xcolor}
 \usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{booktabs}
+
+\usepackage{amsmath,amssymb}
+
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+\usepackage{hyperref}
+\hypersetup{
+    hidelinks,
+    colorlinks=true,
+    breaklinks=true,
+    urlcolor=blue,
+    citecolor=black,
+    linkcolor=black
+}
+
+\usepackage{listings}
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single
+}
+
+% -------------------- PROJECT-SPECIFIC ADDITIONS --------------------
+\usepackage{natbib}
 \usepackage{microtype}
 \captionsetup{font=small,labelfont=bf}
 \graphicspath{{../results/figures/}}
-\setlength{\parskip}{0.2em}
-
 \newcommand{\tab}[1]{\input{../results/tables/#1.tex}}
 
-\title{\vspace{-1.2em}Tabular Q-Learning versus Deep Q-Networks:\\ Sample Efficiency, Sparse Rewards and DQN Ablations}
-\author{Aispur Santiago \quad Amaya Bryan\\[0.2em]
-\small Intelligent Agents --- Instructor: PhD Armas Rolando}
-\date{\today}
-
+% -------------------- DOCUMENT --------------------
 \begin{document}
-\maketitle
 
-%% RESULTS-DEPENDENT TEXT IS FILLED IN AFTER THE EXPERIMENTS FINISH
+% -------------------- HEADER --------------------
+\begin{multicols}{2}
+\begin{flushleft}
+\includegraphics[width=0.36\textwidth]{logo1.png}
+\end{flushleft}
+\begin{flushright}
+\includegraphics[width=0.38\textwidth]{logo2.png}
+\end{flushright}
+\end{multicols}
+
+\begin{center}
+    {\huge \textbf{Tabular Q-Learning versus Deep Q-Networks}}\\[4pt]
+    {\large Sample Efficiency, Sparse Rewards and DQN Ablations}
+\end{center}
+
+\begin{center}
+    \textbf{Aispur Santiago \quad Amaya Bryan}\\
+    \textit{Escuela de Ciencias Matem\'aticas y Computacionales}\\
+    \textit{Yachay Tech University}\\
+    Urcuqu\'i -- Ecuador\\
+    \vspace{2mm}
+    \textit{Course: Intelligent Agents}\\
+    \textit{Instructor: PhD Armas Rolando}\\
+    \today
+\end{center}
+
+\vspace{4mm}
+
+% -------------------- CONTENT --------------------
 \input{body.tex}
 
 \bibliographystyle{plainnat}
 \bibliography{references}
+
 \end{document}
